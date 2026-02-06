@@ -1,0 +1,12 @@
+services:
+  app:
+    image: openapi-splitter
+    build:
+      context: .
+    container_name: openapi-splitter
+    ports:
+      - '5173:5173'
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: yarn dev --host
