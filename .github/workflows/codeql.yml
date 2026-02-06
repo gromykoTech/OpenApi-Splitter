@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        language: [ "javascript", "typescript" ]
+        language: [ "typescript" ]
     steps:
       - uses: actions/checkout@v3
 
