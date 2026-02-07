@@ -10,6 +10,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@features': path.resolve(__dirname, './src/features/'),
+      '@layouts': path.resolve(__dirname, './src/layouts/'),
+      '@api-types': path.resolve(__dirname, './src/features/splitter/types/'),
+      '@stores': path.resolve(__dirname, './src/stores/'),
     },
   },
 });
