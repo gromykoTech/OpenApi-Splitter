@@ -5,6 +5,7 @@ import type {
   ParseOptions,
   SplitOptions,
 } from './types';
+import { yamlValidator } from './yamlValidator';
 
 // Интерфейс сервиса парсинга OpenAPI
 // Реализация - заглушки для будущей разработки
@@ -92,7 +93,7 @@ class OpenApiParserImpl implements OpenApiParser {
   }
 
   async validate(
-    yaml: string,
+    yamlText: string,
     options?: ParseOptions,
   ): Promise<ValidationResult> {
     // Проверка на отмену операции
@@ -100,24 +101,35 @@ class OpenApiParserImpl implements OpenApiParser {
       throw new Error('Операция отменена');
     }
 
-    // Заглушка: базовая валидация
-    // TODO: Реализовать валидацию через swagger-parser или ajv
-    if (!yaml || yaml.trim().length === 0) {
+    // Используем реальную валидацию через yamlValidator
+    const validation = yamlValidator.validate(yamlText);
+
+    // Если YAML синтаксически невалиден, возвращаем ошибки
+    if (!validation.isValid) {
       return {
         isValid: false,
-        errors: ['YAML не может быть пустым'],
+        errors: validation.errors.map((err) => err.message),
       };
     }
 
-    // Проверка на минимальную структуру OpenAPI
-    if (!yaml.includes('openapi') && !yaml.includes('swagger')) {
-      return {
-        isValid: false,
-        errors: ['Файл не содержит OpenAPI спецификацию'],
-      };
+    // Дополнительная проверка на структуру OpenAPI
+    try {
+      const parsed = await this.parse(yamlText, options);
+      if (!parsed.openapi && !(parsed as { swagger?: string }).swagger) {
+        return {
+          isValid: false,
+          errors: ['Файл не содержит OpenAPI спецификацию (отсутствует поле openapi или swagger)'],
+        };
+      }
+    } catch (error) {
+      // Если парсинг не удался, возвращаем ошибку
+      if (error instanceof Error) {
+        return {
+          isValid: false,
+          errors: [error.message],
+        };
+      }
     }
-
-    await this.simulateDelay(options?.signal);
 
     return { isValid: true };
   }

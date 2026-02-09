@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useSplitterStore } from '@stores/splitterStore';
 import { openApiParser } from '@features/splitter/services/openApiParser';
+import { useYamlValidation } from '@features/splitter/hooks/useYamlValidation';
 import type { FileNode } from '@api-types/splitter.types';
 
 // Максимальный размер файла для предупреждения (1MB)
@@ -28,6 +29,9 @@ export function useOpenApiSplitter() {
   // Защита от race conditions: если пользователь быстро жмет кнопки или загружает новый файл,
   // предыдущая операция отменяется, чтобы избежать конфликтов состояний
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Интеграция валидации YAML в реальном времени
+  useYamlValidation();
 
   // Валидация input перед обработкой
   const validateInput = useCallback((text: string): string | null => {
@@ -88,6 +92,14 @@ export function useOpenApiSplitter() {
         return;
       }
 
+      // Проверка валидности YAML из store (валидация происходит в реальном времени)
+      if (!store.isYamlValid) {
+        store.setError(
+          'YAML содержит ошибки. Исправьте ошибки перед разделением файла.',
+        );
+        return;
+      }
+
       // Проверка на повторный split без изменений через хеш
       // Избегаем лишней обработки, если файл не изменился
       const currentHash = hashString(yamlText);
@@ -103,7 +115,7 @@ export function useOpenApiSplitter() {
         store.setProcessing(true);
         store.setError(null);
 
-        // Валидация YAML
+        // Дополнительная валидация YAML через парсер (для проверки структуры OpenAPI)
         const validation = await openApiParser.validate(yamlText, { signal });
 
         if (!validation.isValid) {
