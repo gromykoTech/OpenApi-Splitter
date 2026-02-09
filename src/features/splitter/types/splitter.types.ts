@@ -33,3 +33,17 @@ export type ProcessingState = {
   isProcessing: boolean;
   progress?: number; // 0-100 для индикатора прогресса
 };
+
+// Ошибка валидации YAML с позицией
+export type YamlError = {
+  line: number;
+  column: number;
+  message: string;
+  raw: string; // оригинальное сообщение об ошибке
+};
+
+// Состояние валидации YAML
+export type YamlValidationState = {
+  isValid: boolean;
+  errors: YamlError[];
+};

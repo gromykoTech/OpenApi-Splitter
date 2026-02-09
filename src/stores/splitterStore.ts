@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { FileNode } from '@api-types/splitter.types';
+import type { FileNode, YamlError } from '@api-types/splitter.types';
 
 // Zustand store для управления состоянием сплиттера OpenAPI
 // Выбран Zustand вместо локального состояния или Redux по причинам:
@@ -15,6 +15,8 @@ type SplitterState = {
   isProcessing: boolean;
   error: string | null;
   lastProcessedHash?: string;
+  yamlErrors: YamlError[];
+  isYamlValid: boolean;
 };
 
 type SplitterActions = {
@@ -25,6 +27,8 @@ type SplitterActions = {
   setProcessing: (isProcessing: boolean) => void;
   setError: (error: string | null) => void;
   setLastProcessedHash: (hash: string) => void;
+  setYamlErrors: (errors: YamlError[]) => void;
+  setYamlValid: (isValid: boolean) => void;
 };
 
 type SplitterStore = SplitterState & SplitterActions;
@@ -36,6 +40,8 @@ const initialState: SplitterState = {
   isProcessing: false,
   error: null,
   lastProcessedHash: undefined,
+  yamlErrors: [],
+  isYamlValid: true,
 };
 
 export const useSplitterStore = create<SplitterStore>((set) => ({
@@ -62,4 +68,10 @@ export const useSplitterStore = create<SplitterStore>((set) => ({
 
   // Обработчик обновления хеша последнего обработанного текста
   setLastProcessedHash: (hash: string) => set({ lastProcessedHash: hash }),
+
+  // Обработчик обновления ошибок валидации YAML
+  setYamlErrors: (errors: YamlError[]) => set({ yamlErrors: errors }),
+
+  // Обработчик обновления состояния валидности YAML
+  setYamlValid: (isValid: boolean) => set({ isYamlValid: isValid }),
 }));

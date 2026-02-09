@@ -1,4 +1,8 @@
 import { memo, useMemo } from 'react';
+import CodeMirror from '@uiw/react-codemirror';
+import { yaml } from '@codemirror/lang-yaml';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView } from '@codemirror/view';
 
 type Props = {
   code: string;
@@ -9,9 +13,30 @@ type Props = {
 // Ререндерится только при изменении пропа code
 export const CodeViewer = memo(function CodeViewer({ code }: Props) {
   // useMemo для подготовки кода
-  // Сейчас просто возвращаем code, но здесь можно добавить трансформацию
-  // (например, форматирование, подсветка синтаксиса)
   const displayCode = useMemo(() => code || 'Выберите файл для просмотра', [code]);
+
+  // Расширения CodeMirror для read-only режима
+  const extensions = useMemo(
+    () => [
+      yaml(),
+      EditorView.editable.of(false), // read-only режим
+      EditorView.theme({
+        '&': {
+          fontSize: '14px',
+        },
+        '.cm-content': {
+          padding: '8px',
+        },
+        '.cm-editor': {
+          backgroundColor: 'transparent',
+        },
+        '.cm-scroller': {
+          overflow: 'auto',
+        },
+      }),
+    ],
+    [],
+  );
 
   return (
     <section className="flex-1 py-2 px-4 overflow-auto">
@@ -23,7 +48,19 @@ export const CodeViewer = memo(function CodeViewer({ code }: Props) {
         </div>
         <h2 className="font-semibold text-gray-200">Просмотр кода</h2>
       </div>
-      <pre className="text-sm text-gray-200 whitespace-pre-wrap">{displayCode}</pre>
+      <div className="border border-gray-700 rounded overflow-hidden">
+        <CodeMirror
+          value={displayCode}
+          extensions={extensions}
+          theme={oneDark}
+          editable={false}
+          basicSetup={{
+            lineNumbers: true,
+            foldGutter: true,
+            highlightSelectionMatches: false,
+          }}
+        />
+      </div>
     </section>
   );
 });
