@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useSplitterStore } from '@stores/splitterStore';
 import { openApiParser } from '@features/splitter/services/openApiParser';
+import { splitOpenApiYaml } from '@features/splitter/services/openApiSplitter';
 import { useYamlValidation } from '@features/splitter/hooks/useYamlValidation';
 import type { FileNode } from '@api-types/splitter.types';
 
@@ -58,10 +59,15 @@ export function useOpenApiSplitter() {
       let message = defaultMessage;
       if (error instanceof Error) {
         if (error.message === 'Операция отменена') {
+          console.log('Операция отменена (нормальное поведение)');
           return; // Игнорируем ошибки отмены - это нормальное поведение
         }
         message = error.message;
+        console.error('Ошибка:', error.message, error.stack);
+      } else {
+        console.error('Неизвестная ошибка:', error);
       }
+      console.error('Устанавливаем ошибку в store:', message);
       store.setError(message);
     },
     [store],
@@ -82,18 +88,21 @@ export function useOpenApiSplitter() {
     async (yamlText: string) => {
       // Защита от повторных операций - предотвращает множественные запросы
       if (store.isProcessing) {
+        console.log('Уже обрабатывается, пропускаем');
         return;
       }
 
       // Валидация input перед обработкой
       const validationError = validateInput(yamlText);
       if (validationError) {
+        console.log('Ошибка валидации input:', validationError);
         store.setError(validationError);
         return;
       }
 
       // Проверка валидности YAML из store (валидация происходит в реальном времени)
       if (!store.isYamlValid) {
+        console.log('YAML невалиден');
         store.setError(
           'YAML содержит ошибки. Исправьте ошибки перед разделением файла.',
         );
@@ -104,6 +113,7 @@ export function useOpenApiSplitter() {
       // Избегаем лишней обработки, если файл не изменился
       const currentHash = hashString(yamlText);
       if (currentHash === store.lastProcessedHash) {
+        console.log('Файл не изменился');
         store.setError('Файл не изменился. Нет необходимости повторно обрабатывать.');
         return;
       }
@@ -112,41 +122,47 @@ export function useOpenApiSplitter() {
       const signal = cancelPreviousOperation();
 
       try {
+        console.log('Начинаем обработку...');
         store.setProcessing(true);
         store.setError(null);
 
         // Дополнительная валидация YAML через парсер (для проверки структуры OpenAPI)
+        console.log('Валидация YAML...');
         const validation = await openApiParser.validate(yamlText, { signal });
 
         if (!validation.isValid) {
-          store.setError(
-            validation.errors?.join(', ') || 'YAML файл содержит ошибки',
-          );
+          const errorMsg = validation.errors?.join(', ') || 'YAML файл содержит ошибки';
+          console.error('Ошибка валидации:', errorMsg);
+          store.setError(errorMsg);
+          store.setProcessing(false);
           return;
         }
 
-        // Парсинг OpenAPI
-        const document = await openApiParser.parse(yamlText, { signal });
+        console.log('Разделение на файлы...');
+        // Разделение на файлы напрямую из YAML строки
+        // Используем splitOpenApiYaml() напрямую для эффективности
+        const result = splitOpenApiYaml(yamlText);
 
-        // Разделение на файлы
-        const result = await openApiParser.split(document, { signal });
-
+        console.log('Файлы разделены, обновляем состояние...', result.files.length);
         // Обновление состояния
         store.setFileTree(result.files);
         store.setLastProcessedHash(currentHash);
         store.setSelectedCode('');
 
-        // Установка первого файла как выбранного, если есть файлы
+        // Установка первого файла (openapi.yaml) как выбранного по умолчанию
         if (result.files.length > 0) {
-          const firstFile = result.files[0];
-          store.setSelectedCode(
-            firstFile.content ||
-              `# Файл: ${firstFile.path}\n\nСодержимое будет здесь после реализации парсера.`,
-          );
+          const rootFile = result.files[0]; // openapi.yaml всегда первый
+          if (rootFile.content) {
+            store.setSelectedCode(rootFile.content);
+            console.log('Контент установлен для', rootFile.path);
+          }
         }
+        console.log('Обработка завершена успешно');
       } catch (error) {
+        console.error('Ошибка при обработке:', error);
         handleError(error, 'Ошибка при обработке OpenAPI файла');
       } finally {
+        console.log('Сбрасываем isProcessing');
         store.setProcessing(false);
       }
     },
@@ -157,6 +173,7 @@ export function useOpenApiSplitter() {
   // useCallback нужен для передачи в memo-компоненты (InputSection)
   // Использует текущее значение из store для ручного ввода
   const handleSplit = useCallback(async () => {
+    console.log('handleSplit вызван, inputText длина:', store.inputText.length);
     await processSplit(store.inputText);
   }, [store, processSplit]);
 

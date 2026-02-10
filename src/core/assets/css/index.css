@@ -9,3 +9,29 @@
   --color-error: #dc2626;
   --color-success: #16a34a;
 }
+
+/* Кастомные скроллбары для WebKit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(17, 24, 39, 0.7);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(192, 206, 233);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(125, 130, 139, 0.623);
+}
+
+/* Для Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(192, 206, 233) rgba(17, 24, 39, 0.7);
+}
