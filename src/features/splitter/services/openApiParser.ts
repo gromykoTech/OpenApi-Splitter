@@ -1,3 +1,4 @@
+import * as yaml from 'js-yaml';
 import type {
   OpenApiDocument,
   SplitResult,
@@ -6,6 +7,7 @@ import type {
   SplitOptions,
 } from './types';
 import { yamlValidator } from './yamlValidator';
+import { splitOpenApiYaml } from './openApiSplitter';
 
 // Интерфейс сервиса парсинга OpenAPI
 // Реализация - заглушки для будущей разработки
@@ -25,29 +27,31 @@ export interface OpenApiParser {
 // Для больших файлов (20k+ строк) можно рассмотреть использование Web Worker
 // для парсинга в отдельном потоке и предотвращения блокировки UI
 class OpenApiParserImpl implements OpenApiParser {
-  async parse(yaml: string, options?: ParseOptions): Promise<OpenApiDocument> {
+  async parse(yamlText: string, options?: ParseOptions): Promise<OpenApiDocument> {
     // Проверка на отмену операции (защита от race conditions)
     if (options?.signal?.aborted) {
       throw new Error('Операция отменена');
     }
 
-    // Заглушка: возвращаем пустой документ
-    // TODO: Реализовать парсинг YAML через js-yaml
-    // const parsed = yaml.load(yaml);
-    // return parsed as OpenApiDocument;
-    // Используем yaml для проверки на пустоту (чтобы избежать предупреждения линтера)
-    if (!yaml || yaml.trim().length === 0) {
+    if (!yamlText || yamlText.trim().length === 0) {
       throw new Error('YAML не может быть пустым');
     }
 
-    await this.simulateDelay(options?.signal);
+    try {
+      // Реальный парсинг YAML через js-yaml
+      const parsed = yaml.load(yamlText) as OpenApiDocument;
 
-    return {
-      openapi: '3.0.0',
-      info: { title: 'Parsed API', version: '1.0.0' },
-      paths: {},
-      components: {},
-    };
+      if (!parsed || typeof parsed !== 'object') {
+        throw new Error('Некорректный OpenAPI документ');
+      }
+
+      return parsed;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Ошибка парсинга YAML: ${error.message}`);
+      }
+      throw new Error('Неизвестная ошибка при парсинге YAML');
+    }
   }
 
   async split(
@@ -59,36 +63,22 @@ class OpenApiParserImpl implements OpenApiParser {
       throw new Error('Операция отменена');
     }
 
-    // Заглушка: возвращаем пример структуры файлов
-    // TODO: Реализовать разделение OpenAPI на компоненты:
-    // - components/schemas/*.yaml
-    // - components/responses/*.yaml
-    // - paths/*.yaml
-    // - и т.д.
+    // Для разбиения нужна исходная YAML строка
+    // Преобразуем документ обратно в YAML
+    const yamlText = yaml.dump(document, {
+      indent: 2,
+      lineWidth: -1,
+      noRefs: true,
+      quotingType: '"',
+      forceQuotes: false,
+    });
 
-    await this.simulateDelay(options?.signal);
+    // Используем функцию разбиения
+    const result = splitOpenApiYaml(yamlText);
 
     return {
-      files: [
-        {
-          id: 'components',
-          name: 'components/',
-          path: 'components/',
-          children: [
-            {
-              id: 'schemas',
-              name: 'schemas/',
-              path: 'components/schemas/',
-            },
-          ],
-        },
-        {
-          id: 'paths',
-          name: 'paths/',
-          path: 'paths/',
-        },
-      ],
-      rootDocument: document,
+      files: result.files,
+      rootDocument: result.rootDocument,
     };
   }
 
@@ -112,45 +102,12 @@ class OpenApiParserImpl implements OpenApiParser {
       };
     }
 
-    // Дополнительная проверка на структуру OpenAPI
-    try {
-      const parsed = await this.parse(yamlText, options);
-      if (!parsed.openapi && !(parsed as { swagger?: string }).swagger) {
-        return {
-          isValid: false,
-          errors: ['Файл не содержит OpenAPI спецификацию (отсутствует поле openapi или swagger)'],
-        };
-      }
-    } catch (error) {
-      // Если парсинг не удался, возвращаем ошибку
-      if (error instanceof Error) {
-        return {
-          isValid: false,
-          errors: [error.message],
-        };
-      }
-    }
-
+    // Дополнительная проверка на структуру документа
+    // Парсинг уже выполнен в yamlValidator.validate, поэтому просто возвращаем успех
+    // Разрешаем любые спецификации (openapi, asyncapi, swagger и др.)
     return { isValid: true };
   }
 
-  // Симуляция задержки для демонстрации асинхронности
-  // В реальной реализации будет парсинг YAML
-  private async simulateDelay(signal?: AbortSignal): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        resolve();
-      }, 100);
-
-      // Отслеживание отмены операции
-      if (signal) {
-        signal.addEventListener('abort', () => {
-          clearTimeout(timeout);
-          reject(new Error('Операция отменена'));
-        });
-      }
-    });
-  }
 }
 
 // Экспорт singleton экземпляра

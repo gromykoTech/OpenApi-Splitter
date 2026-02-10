@@ -36,7 +36,7 @@ export function InputSection({
   };
 
   return (
-    <section className="flex items-center justify-center w-full px-4">
+    <section className="relative z-10 flex items-center justify-center w-full px-4">
       <div className="w-full md:w-2/3 lg:w-1/2 flex flex-col gap-2">
         {/* Поле вставки текста с подсветкой синтаксиса */}
         <YamlEditor
@@ -47,7 +47,7 @@ export function InputSection({
           placeholder="Вставьте сюда openapi.yaml или yml..."
         />
 
-        {/* Отображение ошибок валидации YAML */}
+        {/* Отображение ошибок валидации YAML (синтаксические) */}
         {yamlErrors.length > 0 && (
           <div className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded p-2">
             <div className="font-semibold mb-1">Ошибки валидации YAML:</div>
@@ -61,10 +61,11 @@ export function InputSection({
           </div>
         )}
 
-        {/* Отображение других ошибок */}
-        {error && !yamlErrors.length && (
+        {/* Отображение ошибок валидации OpenAPI (структурные) */}
+        {error && (
           <div className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded p-2">
-            {error}
+            <div className="font-semibold mb-1">Ошибка обработки:</div>
+            <div>{error}</div>
           </div>
         )}
 
