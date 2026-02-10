@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { useSplitterStore } from '@stores/splitterStore';
-import { openApiParser } from '@features/splitter/services/openApiParser';
+import { validateOpenApi } from '@features/splitter/services/openApiParser';
 import { splitOpenApiYaml } from '@features/splitter/services/openApiSplitter';
 import { useYamlValidation } from '@features/splitter/hooks/useYamlValidation';
 import type { FileNode } from '@api-types/splitter.types';
@@ -128,7 +128,7 @@ export function useOpenApiSplitter() {
 
         // Дополнительная валидация YAML через парсер (для проверки структуры OpenAPI)
         console.log('Валидация YAML...');
-        const validation = await openApiParser.validate(yamlText, { signal });
+        const validation = await validateOpenApi(yamlText, { signal });
 
         if (!validation.isValid) {
           const errorMsg = validation.errors?.join(', ') || 'YAML файл содержит ошибки';
