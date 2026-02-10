@@ -1,73 +1,137 @@
-# React + TypeScript + Vite
+# OpenAPI Splitter
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Инструмент для разбиения монолитного OpenAPI YAML на отдельные файлы с сохранением иерархии. Результат можно скачать в ZIP-архиве.
 
-Currently, two official plugins are available:
+## Описание проекта
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+OpenAPI Splitter — веб-приложение для автоматического разбиения больших OpenAPI спецификаций на логически организованные файлы. Приложение обрабатывает монолитный `openapi.yaml` и создает структуру файлов, соответствующую структуре API.
 
-## React Compiler
+### Основные возможности
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Загрузка OpenAPI YAML**: вставка текста или загрузка файла (`.yaml`, `.yml`, `.json`)
+- **Автоматическое разбиение**: разделение спецификации по правилам:
+  - `paths` → отдельные файлы в `paths/{путь}.yaml`
+  - `components` → файлы в `components/{тип}/{имя}.yaml`
+- **Просмотр файловой структуры**: интерактивное дерево файлов с поиском
+- **Просмотр содержимого**: просмотр содержимого файлов с подсветкой синтаксиса YAML
+- **Скачивание результата**: экспорт всей структуры в ZIP-архив (`openapi-split.zip`)
+- **Валидация YAML**: проверка синтаксиса в реальном времени с указанием ошибок
+- **Форматирование YAML**: автоматическое форматирование YAML-кода
 
-## Expanding the ESLint configuration
+## Основные особенности
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Абсолютные `$ref`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Все ссылки `$ref` остаются абсолютными и не изменяются при разбиении:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```yaml
+$ref: '#/components/schemas/User'
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Ссылки не преобразуются в относительные пути и не привязываются к физическим файлам. Поведение идентично монолитному `openapi.yaml`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Чистый главный файл
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Главный файл `openapi.yaml` содержит только технические ключи:
+- `openapi`
+- `info`
+- `servers`
+- `tags`
+
+Поля `paths` и `components` удаляются из главного файла и разбиваются на отдельные файлы.
+
+### Клиентская обработка
+
+Вся обработка происходит в браузере, без сервера:
+- Парсинг YAML
+- Разбиение на файлы
+- Создание ZIP-архива
+- Валидация
+
+### Поддержка больших спецификаций
+
+Приложение оптимизировано для работы с большими файлами:
+- Асинхронная обработка
+- Защита от race conditions
+- Оптимизированное отображение больших деревьев файлов
+
+### Сохранение иерархии
+
+Структура директорий в результате соответствует структуре API:
+
 ```
+openapi.yaml
+components/
+  schemas/
+    User.yaml
+    Admin.yaml
+  responses/
+    Error.yaml
+paths/
+  api/
+    v1/
+      users.yaml
+  health.yaml
+```
+
+## Установка и запуск
+
+Подробные инструкции по установке и запуску см. в [docs/installation.md](docs/installation.md).
+
+## Архитектура
+
+Описание архитектуры SPA приложения см. в [docs/architecture.md](docs/architecture.md).
+
+### Быстрый старт
+
+```bash
+docker compose build
+docker compose up
+```
+
+Приложение будет доступно по адресу: `http://localhost:5173`
+
+## Технологии
+
+- **React 19.2.0** — декларативная библиотека для построения пользовательских интерфейсов
+- **TypeScript 5.9.3** — типизация
+- **Vite 7.2.4** — сборщик и dev-сервер
+- **Zustand** — управление состоянием
+- **CodeMirror 6** — редактор кода с подсветкой синтаксиса
+- **js-yaml** — парсинг и валидация YAML
+- **fflate** — создание ZIP-архивов в браузере
+- **Tailwind CSS 4.1.18** — стилизация
+
+## Правила разбиения
+
+### Paths
+
+Каждый путь API выносится в отдельный файл:
+
+```
+/api/v1/users → paths/api/v1/users.yaml
+/health → paths/health.yaml
+```
+
+### Components
+
+Каждый компонент выносится в файл по типу:
+
+```
+components/schemas/User → components/schemas/User.yaml
+components/responses/Error → components/responses/Error.yaml
+```
+
+### Главный файл
+
+Содержит только корневые поля:
+- `openapi` — версия спецификации
+- `info` — метаинформация
+- `servers` — серверы
+- `tags` — теги
+- Другие корневые поля (кроме `paths` и `components`)
+
+## Лицензия
+
+Нет лицензии. Дайте печеньку.
+Проект является публичным.
