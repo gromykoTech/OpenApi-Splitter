@@ -25,7 +25,7 @@ export class YamlValidator {
 
     try {
       // Попытка парсинга YAML
-      yaml.load(yamlText, { strict: true });
+      yaml.load(yamlText);
       return {
         isValid: true,
         errors: [],
